@@ -17,7 +17,7 @@ from pydantic import BaseModel
 # a test (or a future reload) can swap app.config.settings and have provider
 # selection follow it.
 from app import config
-from app.config import ANTHROPIC, MOCK, OLLAMA, OPENAI_COMPAT_ALIASES, OPENROUTER
+from app.config import ANTHROPIC, CLAUDE_CLI, MOCK, OLLAMA, OPENAI_COMPAT_ALIASES, OPENROUTER
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -102,6 +102,11 @@ def get_provider() -> LLMProvider:
             default_headers=openrouter_headers() if is_openrouter else None,
             extra_body=openrouter_extra_body() if is_openrouter else None,
         )
+
+    if provider == CLAUDE_CLI:
+        from app.llm.claude_cli_provider import ClaudeCliProvider
+
+        return ClaudeCliProvider(model=_require_model(), timeout=config.settings.llm_timeout_s)
 
     if provider == MOCK:
         from app.llm.mock_provider import MockProvider
