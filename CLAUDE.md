@@ -128,12 +128,29 @@ select that row's `public_id` (e.g. `j.public_id AS job_pid`).
 
 **LLM provider abstraction** (`app/llm/`): `get_provider()` (`base.py`,
 `@lru_cache`) dispatches on `settings.llm_provider` to Anthropic /
-OpenAI-compatible (OpenAI, OpenRouter, llama.cpp, vLLM) / native Ollama / Mock.
-The one contract that matters:
+OpenAI-compatible (OpenAI, OpenRouter, llama.cpp, vLLM) / native Ollama /
+Claude CLI / Mock. The one contract that matters:
 
 ```python
 get_provider().extract(system=..., prompt=..., schema=SomePydanticModel) -> SomePydanticModel  # validated
 ```
+
+**Claude CLI provider** (`LLM_PROVIDER=claude-cli`, `app/llm/claude_cli_provider.py`):
+shells out to `claude -p` instead of calling a hosted API with a key, for a
+machine where the Anthropic Console is unreachable but Claude Code itself is
+already logged in. No API key or base URL, `LLM_MODEL` is still required (no
+default, same as every non-Anthropic provider). Every invocation hardcodes
+`--safe-mode` (skips this repo's own `CLAUDE.md`/hooks/plugins/MCP servers so
+they don't leak into unrelated prompts, while — unlike `--bare` — still using
+normal OAuth/keychain auth instead of requiring a raw `ANTHROPIC_API_KEY`,
+which defeats the entire point of this provider) plus `--tools ""` and
+`--permission-mode dontAsk` (no Bash/Read/Write access at all) — **not
+configurable**, because résumé and job-posting text ride in every prompt and
+is attacker-controlled from the model's perspective; a prompt injection must
+never be able to reach a tool. Structured extraction uses the CLI's native
+`--json-schema` flag. Rate-limit sharing with interactive Claude Code
+sessions on the same subscription, and per-call CLI cold-start latency, are
+both real trade-offs of this backend versus a hosted API key.
 
 Schemas live in `app/models/extraction.py`; prompts in `app/llm/prompts.py`.
 **Adding a pipeline = new Pydantic schema + prompt + a canned entry in

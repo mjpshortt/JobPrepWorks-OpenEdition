@@ -65,6 +65,12 @@ LLM_MODEL=qwen3:14b
 LLM_BASE_URL=http://localhost:11434
 LLM_NUM_CTX=16384
 
+# Claude CLI — shells out to `claude -p` instead of a hosted API key.
+# Requires the Claude Code CLI already installed and logged in
+# (`claude login`) on this machine. No API key or base URL here.
+LLM_PROVIDER=claude-cli
+LLM_MODEL=claude-sonnet-5
+
 # No model at all — canned responses, for a UI-only demo
 LLM_PROVIDER=mock
 ```
@@ -72,6 +78,16 @@ LLM_PROVIDER=mock
 `LLM_MODEL` is **required** for every provider except `anthropic` and `mock`.
 The app logs a specific warning at startup naming whatever is missing; read
 that output rather than guessing.
+
+The `claude-cli` provider always runs the CLI with `--safe-mode` (isolates
+this repo's own CLAUDE.md/hooks/MCP servers without breaking OAuth/keychain
+auth — `--bare` looks similar but requires a raw `ANTHROPIC_API_KEY` instead,
+which defeats the point of this provider) and all tool use disabled
+(`--tools ""`, `--permission-mode dontAsk`) — this is hardcoded, not a
+setting, because résumé and job-posting text ride in every prompt. Two
+trade-offs versus a hosted API key: `-p` calls may share the same
+subscription rate limit as interactive Claude Code sessions, and each call
+pays CLI process startup latency.
 
 ### Company Pulse (employer research) — optional
 
