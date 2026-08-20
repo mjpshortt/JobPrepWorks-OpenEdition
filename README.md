@@ -128,6 +128,20 @@ over, stop the app and delete it — the schema rebuilds itself on the next star
 There is no "wipe my data" button, because `rm -rf data/` is the button, and it
 can't half-succeed. Settings prints both paths so you always know what to remove.
 
+Your `.env` is worth backing up too — it holds your provider config and API keys,
+and isn't tracked in git. `scripts/backup` does both in one step:
+
+```sh
+scripts/backup                        # writes backups/jobprepworks-<timestamp>.tar.gz
+scripts/backup ~/backups/mine.tar.gz  # or pick your own destination
+```
+
+It's safe to run while the app is up — it uses SQLite's own backup command
+rather than copying the file directly, so a concurrent write can't leave the
+copy half-written. To restore, stop the app, extract the archive over the repo
+root (it recreates `data/jobprep.db`, `data/uploads/`, and `.env`), and start it
+again.
+
 Nothing is sent anywhere except the model provider you configured, and the web
 searches Company Pulse runs when you ask it to research a company. There is no
 analytics, no crash reporting, no phone-home. On OpenRouter, prompts are routed
