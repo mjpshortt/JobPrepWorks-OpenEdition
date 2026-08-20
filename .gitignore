@@ -27,6 +27,9 @@ htmlcov/
 # Never commit this — it is your résumé, your job list, and your answers.
 data/
 
+# scripts/backup's default output — contains the same data, plus .env.
+backups/
+
 # Editors / OS
 .DS_Store
 .vscode/

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Back up the database, uploads, and .env into one timestamped archive.
+# Safe to run while the app is up — uses SQLite's own backup command so a
+# concurrent writer can't leave the copy in a half-written state.
+# Usage: scripts/backup [destination-file.tar.gz]
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+if [ ! -x .venv/bin/python ]; then
+  echo "error: .venv not found. Run scripts/setup first." >&2
+  exit 1
+fi
+
+if ! command -v sqlite3 >/dev/null 2>&1; then
+  echo "error: sqlite3 command-line tool not found." >&2
+  exit 1
+fi
+
+DB_PATH="$(.venv/bin/python -c 'from app import config; print(config.DB_PATH)')"
+UPLOADS_DIR="$(.venv/bin/python -c 'from app import config; print(config.UPLOADS_DIR)')"
+
+if [ ! -f "$DB_PATH" ]; then
+  echo "error: no database at $DB_PATH yet — nothing to back up." >&2
+  exit 1
+fi
+
+DEST="${1:-backups/jobprepworks-$(date +%Y%m%d-%H%M%S).tar.gz}"
+mkdir -p "$(dirname "$DEST")"
+
+STAGING="$(mktemp -d)"
+trap 'rm -rf "$STAGING"' EXIT
+mkdir -p "$STAGING/data"
+
+echo "→ snapshotting database"
+sqlite3 "$DB_PATH" ".backup '$STAGING/data/jobprep.db'"
+
+if [ -d "$UPLOADS_DIR" ]; then
+  cp -R "$UPLOADS_DIR" "$STAGING/data/uploads"
+fi
+
+TAR_ARGS=(-czf "$DEST" -C "$STAGING" data)
+
+if [ -f .env ]; then
+  TAR_ARGS+=(-C "$(pwd)" .env)
+fi
+
+tar "${TAR_ARGS[@]}"
+
+echo "→ backed up to $DEST"
+echo
+echo "To restore: stop the app, extract this archive over the repo root"
+echo "(it recreates jobprep.db, uploads/, and .env), then start it again."
