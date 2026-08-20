@@ -135,6 +135,42 @@ def test_ollama_tolerates_an_openai_style_base_url(monkeypatch):
     assert p.chat_url == "http://box:11434/api/chat"
 
 
+# ── Claude CLI (`claude -p`, no API key) ────────────────────────────────────
+
+
+def test_claude_cli_dispatches_when_the_binary_is_present(monkeypatch):
+    import app.llm.claude_cli_provider as claude_cli_provider
+
+    monkeypatch.setattr(claude_cli_provider.shutil, "which", lambda name: "/usr/bin/claude")
+    p = _provider_for(monkeypatch, llm_provider="claude-cli", llm_model="claude-sonnet-5")
+    assert type(p).__name__ == "ClaudeCliProvider"
+    assert p.model == "claude-sonnet-5"
+
+
+def test_claude_cli_requires_a_model(monkeypatch):
+    import app.llm.claude_cli_provider as claude_cli_provider
+
+    monkeypatch.setattr(claude_cli_provider.shutil, "which", lambda name: "/usr/bin/claude")
+    with pytest.raises(LLMError, match="LLM_MODEL"):
+        _provider_for(monkeypatch, llm_provider="claude-cli", llm_model="")
+
+
+def test_claude_cli_missing_binary_is_a_clear_error(monkeypatch):
+    import app.llm.claude_cli_provider as claude_cli_provider
+
+    monkeypatch.setattr(claude_cli_provider.shutil, "which", lambda name: None)
+    with pytest.raises(LLMError, match="Claude CLI"):
+        _provider_for(monkeypatch, llm_provider="claude-cli", llm_model="claude-sonnet-5")
+
+
+def test_config_warnings_name_the_missing_claude_binary(monkeypatch):
+    monkeypatch.setattr(config.shutil, "which", lambda name: None)
+    monkeypatch.setattr(
+        config, "settings", Settings(llm_provider="claude-cli", llm_model="claude-sonnet-5")
+    )
+    assert "claude" in " ".join(config.llm_config_warnings()).lower()
+
+
 # ── Misconfiguration ─────────────────────────────────────────────────────────
 
 

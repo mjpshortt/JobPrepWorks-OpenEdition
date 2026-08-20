@@ -7,6 +7,7 @@ in one local SQLite file. `.env.example` documents every knob below.
 """
 
 import os
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -63,9 +64,10 @@ ANTHROPIC = "anthropic"
 OLLAMA = "ollama"
 OPENAI = "openai"
 OPENROUTER = "openrouter"
+CLAUDE_CLI = "claude-cli"
 MOCK = "mock"
 OPENAI_COMPAT_ALIASES = frozenset({"openai", "openai-compat", "openrouter", "llamacpp", "vllm"})
-KNOWN_PROVIDERS = frozenset({ANTHROPIC, OLLAMA, MOCK}) | OPENAI_COMPAT_ALIASES
+KNOWN_PROVIDERS = frozenset({ANTHROPIC, OLLAMA, CLAUDE_CLI, MOCK}) | OPENAI_COMPAT_ALIASES
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENAI_BASE_URL = "https://api.openai.com/v1"
@@ -364,6 +366,10 @@ def llm_config_warnings() -> list[str]:
         )
     if provider == ANTHROPIC and not settings.llm_api_key:
         out.append(_missing_key_warning(provider))
+    if provider == CLAUDE_CLI and not shutil.which("claude"):
+        out.append(
+            "The `claude` CLI was not found on PATH — install Claude Code and run `claude login`."
+        )
     if provider in OPENAI_COMPAT_ALIASES:
         if not resolved_base_url():
             out.append(
